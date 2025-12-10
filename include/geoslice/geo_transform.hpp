@@ -9,18 +9,18 @@ namespace geoslice {
 class GeoTransform {
 public:
     GeoTransform(const std::array<double, 6>& transform, int utm_zone = 36);
-    
+
     std::pair<int, int> latlon_to_pixel(double lat, double lon) const;
     std::pair<double, double> pixel_to_latlon(int px, int py) const;
     std::pair<int, int> fov_to_pixels(double altitude_m, double fov_deg) const;
-    
+
     double pixel_size_x() const { return pixel_size_x_; }
     double pixel_size_y() const { return pixel_size_y_; }
 
 private:
     std::pair<double, double> latlon_to_utm(double lat, double lon) const;
     std::pair<double, double> utm_to_latlon(double x, double y) const;
-    
+
     double pixel_size_x_;
     double pixel_size_y_;
     double origin_x_;

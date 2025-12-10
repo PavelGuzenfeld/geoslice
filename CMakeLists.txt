@@ -25,7 +25,7 @@ target_compile_options(geoslice_core PRIVATE -O3 -march=native -ffast-math)
 # Python bindings
 if(BUILD_PYTHON)
     find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
-    
+
     # Fetch pybind11
     FetchContent_Declare(
         pybind11
@@ -33,7 +33,7 @@ if(BUILD_PYTHON)
         GIT_TAG v2.11.1
     )
     FetchContent_MakeAvailable(pybind11)
-    
+
     pybind11_add_module(_geoslice_cpp src/bindings.cpp)
     target_link_libraries(_geoslice_cpp PRIVATE geoslice_core)
 endif()
@@ -41,21 +41,21 @@ endif()
 # Tests
 if(BUILD_TESTS)
     enable_testing()
-    
+
     FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
         GIT_TAG v1.14.0
     )
     FetchContent_MakeAvailable(googletest)
-    
+
     add_executable(geoslice_tests
         tests/test_mmap_reader.cpp
         tests/test_geo_transform.cpp
         tests/test_window_cache.cpp
     )
     target_link_libraries(geoslice_tests PRIVATE geoslice_core GTest::gtest_main)
-    
+
     include(GoogleTest)
     gtest_discover_tests(geoslice_tests)
 endif()

@@ -30,7 +30,7 @@ PYBIND11_MODULE(_geoslice_cpp, m) {
         .def("get_window", [](const geoslice::MMapReader& reader, int x, int y, int width, int height) {
             auto view = reader.get_window(x, y, width, height);
             const auto& meta = reader.metadata();
-            
+
             // Create numpy array that shares memory with mmap
             std::vector<ssize_t> shape = {view.bands, view.height, view.width};
             std::vector<ssize_t> strides = {
@@ -38,14 +38,14 @@ PYBIND11_MODULE(_geoslice_cpp, m) {
                 static_cast<ssize_t>(view.stride_row),
                 static_cast<ssize_t>(view.pixel_size)
             };
-            
+
             py::dtype dtype(meta.dtype);
             return py::array(dtype, shape, strides, view.data, py::cast(reader));
         }, py::arg("x"), py::arg("y"), py::arg("width"), py::arg("height"),
            py::return_value_policy::reference_internal);
 
     py::class_<geoslice::GeoTransform>(m, "GeoTransform")
-        .def(py::init<const std::array<double, 6>&, int>(), 
+        .def(py::init<const std::array<double, 6>&, int>(),
              py::arg("transform"), py::arg("utm_zone") = 36)
         .def_property_readonly("pixel_size_x", &geoslice::GeoTransform::pixel_size_x)
         .def_property_readonly("pixel_size_y", &geoslice::GeoTransform::pixel_size_y)

@@ -7,7 +7,7 @@ from pathlib import Path
 
 # Always use setuptools for editable installs or when GEOSLICE_PYTHON_ONLY is set
 PYTHON_ONLY = (
-    os.environ.get("GEOSLICE_PYTHON_ONLY", "0") == "1" or 
+    os.environ.get("GEOSLICE_PYTHON_ONLY", "0") == "1" or
     "--editable" in sys.argv or
     "-e" in sys.argv
 )

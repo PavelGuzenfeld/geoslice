@@ -14,7 +14,7 @@ Ultra-fast geospatial windowing with zero-copy memory mapping.
 ============================================================
 COMPARISON: 100 x 512x512 windows (4096x4096 4-band image)
 ============================================================
-Method               Time (s)     Ops/s        Speedup   
+Method               Time (s)     Ops/s        Speedup
 ------------------------------------------------------------
 GeoSlice (mmap)      0.0003       305,737      154.6x
 Rasterio             0.0506       1,977        1.0x

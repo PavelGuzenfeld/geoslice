@@ -7,7 +7,7 @@ from .drone import DroneState, FlightPath
 
 __all__ = [
     "FastGeoMap",
-    "GeoTransform", 
+    "GeoTransform",
     "DroneState",
     "FlightPath",
     "convert_tif_to_raw",
@@ -15,8 +15,9 @@ __all__ = [
 
 # Try to import C++ backend
 try:
-    from ._geoslice_cpp import MMapReader as _CppMMapReader
     from ._geoslice_cpp import GeoTransform as _CppGeoTransform
+    from ._geoslice_cpp import MMapReader as _CppMMapReader
+
     HAS_CPP_BACKEND = True
 except ImportError:
     HAS_CPP_BACKEND = False
