@@ -39,3 +39,10 @@
 
 # debug information files
 *.dwo
+
+# Build directories
+build/
+
+# Python cache
+__pycache__/
+*.pyc
