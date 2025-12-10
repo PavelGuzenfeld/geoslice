@@ -8,10 +8,24 @@ Ultra-fast geospatial windowing with zero-copy memory mapping.
 
 ## Performance
 
+### vs Rasterio (real-world GeoTIFF)
+
 | Method | Throughput | Speedup |
 |--------|------------|---------|
 | **GeoSlice (mmap)** | ~600k ops/s | **213x** |
 | Rasterio | ~2.7k ops/s | 1x |
+
+### Micro-benchmarks (synthetic data)
+
+```
+Name                          Mean        Ops/s       Notes
+─────────────────────────────────────────────────────────────
+window_access_speed           1.3μs       761,344     Single 512x512 window
+flight_path_simulation        15.2μs      65,551      50 waypoints pipeline
+random_windows                131.8μs     7,585       100 random positions
+sequential_windows            139.9μs     7,145       100 sequential windows
+geo_transform_speed           2.1ms       475         1000 coord transforms
+```
 
 ## Install
 
@@ -41,6 +55,11 @@ convert_tif_to_raw("input.tif", "output_map")
 # Creates: output_map.bin, output_map.json
 ```
 
+Or via CLI:
+```bash
+gdal_translate -of ENVI -co INTERLEAVE=BSQ input.tif output_map.bin
+```
+
 ### 2. Access Windows
 
 ```python
@@ -48,7 +67,7 @@ from geoslice import FastGeoMap
 
 loader = FastGeoMap("output_map")
 
-# Zero-copy window access
+# Zero-copy window access (~760k ops/s)
 window = loader.get_window(x=100, y=100, width=512, height=512)
 print(window.shape)  # (bands, height, width)
 ```
@@ -85,7 +104,7 @@ for state in path:
 FastGeoMap(base_name: str, use_cpp: bool = None)
 ```
 
-- `get_window(x, y, width, height)` → `np.ndarray` (view)
+- `get_window(x, y, width, height)` → `np.ndarray` (view, zero-copy)
 - `get_window_copy(x, y, width, height)` → `np.ndarray` (copy)
 - `is_valid_window(x, y, width, height)` → `bool`
 - `.width`, `.height`, `.bands`, `.shape`, `.meta`
@@ -125,22 +144,58 @@ Pointer arithmetic → OS pages in 4KB chunks on-demand
 
 The OS kernel handles caching, prefetching, and memory management.
 
-## Building from Source
+## Development
+
+### Setup
 
 ```bash
 git clone https://github.com/yourusername/geoslice
 cd geoslice
 
-# Python only
-pip install -e .
+# Create venv (use --system-site-packages if you need ROS2)
+python3 -m venv .venv --system-site-packages
+source .venv/bin/activate
 
-# With C++ backend
-pip install scikit-build-core pybind11
-pip install -e . -v
+# Install with dev dependencies
+pip install -e ".[dev]"
+```
 
-# Run tests
-pip install pytest pytest-benchmark
-pytest
+### Run Tests
+
+```bash
+# Python tests
+pytest -v
+
+# With benchmark details
+pytest -v --benchmark-only
+
+# C++ tests (requires build)
+cmake -B build -DBUILD_PYTHON=OFF
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+### Test with Real Data
+
+```bash
+# Convert your GeoTIFF
+python -c "from geoslice import convert_tif_to_raw; convert_tif_to_raw('your_image.tif', 'processed_map')"
+
+# Benchmark
+python -c "
+from geoslice import FastGeoMap
+import time
+
+loader = FastGeoMap('processed_map')
+print(f'Loaded: {loader.shape}')
+
+start = time.perf_counter()
+for i in range(1000):
+    w = loader.get_window(i*10 % 1000, i*10 % 1000, 512, 512)
+    _ = w[0,0,0]
+elapsed = time.perf_counter() - start
+print(f'1000 windows: {elapsed:.4f}s ({1000/elapsed:.0f} ops/s)')
+"
 ```
 
 ## C++ Usage
@@ -161,6 +216,18 @@ cmake -B build -DBUILD_PYTHON=OFF
 cmake --build build
 ```
 
+## Release
+
+Releases are automated via GitHub Actions on version tags:
+
+```bash
+# Update version in pyproject.toml and python/geoslice/__init__.py
+git add -A
+git commit -m "Release v0.0.2"
+git tag v0.0.2
+git push && git push --tags
+```
+
 ## License
 
-MIT
+MIT License. See `LICENSE` file for details.
