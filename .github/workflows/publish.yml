@@ -33,10 +33,10 @@ jobs:
           # Pass the version explicitly to setuptools_scm
           SETUPTOOLS_SCM_PRETEND_VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          pip install build setuptools setuptools-scm
-          # --no-isolation is CRITICAL here:
-          # It ensures the build uses the 'setuptools-scm' we just installed
-          # instead of creating an empty isolated env that ignores the version tag.
+          # FIX: Manually install 'wheel' and 'numpy' because --no-isolation
+          # requires all build dependencies to be present in the environment.
+          pip install build setuptools setuptools-scm wheel numpy
+
           python -m build --sdist --wheel --outdir dist/ --no-isolation
 
       - name: Verify built version
@@ -95,9 +95,8 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          # If using Trusted Publishing (OIDC), do NOT set password.
-          # If using a Token secret, keep this line.
-          # To fix the warning about attestations, we explicitly disable them if using a password.
+          # If using Trusted Publishing (OIDC), keep password commented out.
+          # If using a Token secret, uncomment the next line:
           password: ${{ secrets.PYPI_API_TOKEN }}
           attestations: false
 
