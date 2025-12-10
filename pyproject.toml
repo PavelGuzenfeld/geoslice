@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "numpy>=1.20"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geoslice"
+version = "0.0.1"
+description = "Ultra-fast geospatial windowing with zero-copy memory mapping"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "GeoSlice Authors"}]
+requires-python = ">=3.8"
+keywords = ["geospatial", "gis", "mmap", "raster", "drone", "performance"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+dependencies = [
+    "numpy>=1.20",
+]
+
+[project.optional-dependencies]
+convert = ["rasterio>=1.3"]
+dev = [
+    "pytest>=7.0",
+    "pytest-benchmark>=4.0",
+    "rasterio>=1.3",
+    "black",
+    "mypy",
+    "ruff",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/geoslice"
+Repository = "https://github.com/yourusername/geoslice"
+Documentation = "https://github.com/yourusername/geoslice#readme"
+
+[tool.setuptools.packages.find]
+where = ["python"]
+
+[tool.setuptools.package-data]
+geoslice = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
