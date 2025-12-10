@@ -1,0 +1,207 @@
+Metadata-Version: 2.4
+Name: geoslice
+Version: 0.0.1
+Summary: Ultra-fast geospatial windowing with zero-copy memory mapping
+Author: GeoSlice Authors
+License: MIT
+Project-URL: Homepage, https://github.com/yourusername/geoslice
+Project-URL: Repository, https://github.com/yourusername/geoslice
+Project-URL: Documentation, https://github.com/yourusername/geoslice#readme
+Keywords: geospatial,gis,mmap,raster,drone,performance
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Operating System :: MacOS
+Classifier: Programming Language :: C++
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: GIS
+Classifier: Topic :: Scientific/Engineering :: Image Processing
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.20
+Provides-Extra: convert
+Requires-Dist: rasterio>=1.3; extra == "convert"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-benchmark>=4.0; extra == "dev"
+Requires-Dist: rasterio>=1.3; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+Dynamic: license-file
+Dynamic: requires-python
+
+# GeoSlice
+
+Ultra-fast geospatial windowing with zero-copy memory mapping.
+
+[![CI](https://github.com/yourusername/geoslice/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/geoslice/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/geoslice.svg)](https://pypi.org/project/geoslice/)
+[![Python](https://img.shields.io/pypi/pyversions/geoslice.svg)](https://pypi.org/project/geoslice/)
+
+## Performance
+
+| Method | Throughput | Speedup |
+|--------|------------|---------|
+| **GeoSlice (mmap)** | ~600k ops/s | **213x** |
+| Rasterio | ~2.7k ops/s | 1x |
+
+## Install
+
+```bash
+pip install geoslice
+```
+
+With C++ backend (recommended):
+```bash
+pip install geoslice[cpp]
+```
+
+For converting GeoTIFFs:
+```bash
+pip install geoslice[convert]
+sudo apt install gdal-bin  # Linux
+```
+
+## Quick Start
+
+### 1. Convert GeoTIFF (one-time)
+
+```python
+from geoslice import convert_tif_to_raw
+
+convert_tif_to_raw("input.tif", "output_map")
+# Creates: output_map.bin, output_map.json
+```
+
+### 2. Access Windows
+
+```python
+from geoslice import FastGeoMap
+
+loader = FastGeoMap("output_map")
+
+# Zero-copy window access
+window = loader.get_window(x=100, y=100, width=512, height=512)
+print(window.shape)  # (bands, height, width)
+```
+
+### 3. Drone Simulation
+
+```python
+from geoslice import FastGeoMap, GeoTransform, FlightPath
+
+loader = FastGeoMap("output_map")
+geo = GeoTransform(loader.meta.transform, utm_zone=36)
+
+# Generate spiral flight path
+path = FlightPath.spiral(
+    center_lat=31.45,
+    center_lon=34.80,
+    num_waypoints=50,
+    altitudes=[50, 100, 150, 200],
+)
+
+# Extract windows along path
+for state in path:
+    win = FlightPath.state_to_window(state, geo)
+    if win.is_valid(loader.width, loader.height):
+        data = loader.get_window(win.x, win.y, win.width, win.height)
+        # Process frame...
+```
+
+## API
+
+### FastGeoMap
+
+```python
+FastGeoMap(base_name: str, use_cpp: bool = None)
+```
+
+- `get_window(x, y, width, height)` → `np.ndarray` (view)
+- `get_window_copy(x, y, width, height)` → `np.ndarray` (copy)
+- `is_valid_window(x, y, width, height)` → `bool`
+- `.width`, `.height`, `.bands`, `.shape`, `.meta`
+
+### GeoTransform
+
+```python
+GeoTransform(transform: tuple, utm_zone: int = 36)
+```
+
+- `latlon_to_pixel(lat, lon)` → `(px, py)`
+- `pixel_to_latlon(px, py)` → `(lat, lon)`
+- `fov_to_pixels(altitude_m, fov_deg)` → `(width, height)`
+
+### FlightPath
+
+```python
+FlightPath.spiral(center_lat, center_lon, num_waypoints, altitudes, fov_deg)
+FlightPath.linear(start_lat, start_lon, end_lat, end_lon, num_waypoints, altitude_m)
+FlightPath.grid(min_lat, min_lon, max_lat, max_lon, rows, cols, altitude_m)
+```
+
+- `state_to_window(state, geo)` → `WindowParams`
+- `compute_windows(geo)` → `List[WindowParams]`
+
+## How It Works
+
+Standard libraries (Rasterio, OpenCV) read compressed data:
+```
+Seek → Read → Decompress → Copy to RAM
+```
+
+GeoSlice uses memory-mapped raw binary:
+```
+Pointer arithmetic → OS pages in 4KB chunks on-demand
+```
+
+The OS kernel handles caching, prefetching, and memory management.
+
+## Building from Source
+
+```bash
+git clone https://github.com/yourusername/geoslice
+cd geoslice
+
+# Python only
+pip install -e .
+
+# With C++ backend
+pip install scikit-build-core pybind11
+pip install -e . -v
+
+# Run tests
+pip install pytest pytest-benchmark
+pytest
+```
+
+## C++ Usage
+
+```cpp
+#include <geoslice/geoslice.hpp>
+
+geoslice::MMapReader reader("processed_map");
+auto view = reader.get_window(100, 100, 512, 512);
+
+// Zero-copy access
+uint8_t pixel = view.at<uint8_t>(0, 0, 0);  // band, y, x
+```
+
+Build:
+```bash
+cmake -B build -DBUILD_PYTHON=OFF
+cmake --build build
+```
+
+## License
+
+MIT
