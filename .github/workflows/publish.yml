@@ -18,33 +18,42 @@ jobs:
       - name: Get version from tag
         id: version
         run: |
-          # Strip the 'v' prefix
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Building version: $VERSION"
+          echo "Target version: $VERSION"
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Build sdist and wheel
-        env:
-          # Pass the version explicitly to setuptools_scm
-          SETUPTOOLS_SCM_PRETEND_VERSION: ${{ steps.version.outputs.VERSION }}
+      - name: Switch to Static Versioning
         run: |
-          # FIX: Manually install 'wheel' and 'numpy' because --no-isolation
-          # requires all build dependencies to be present in the environment.
-          pip install build setuptools setuptools-scm wheel numpy
+          # 1. Replace 'dynamic = ["version"]' with the actual static version
+          sed -i "s/dynamic = \[\"version\"\]/version = \"${{ steps.version.outputs.VERSION }}\"/" pyproject.toml
 
-          python -m build --sdist --wheel --outdir dist/ --no-isolation
+          # 2. Manually write the version file (since setuptools_scm won't run)
+          # We write it to the path specified in your [tool.setuptools_scm] config
+          echo "version = '${{ steps.version.outputs.VERSION }}'" > python/geoslice/_version.py
+
+          echo "--- Patched pyproject.toml ---"
+          grep "version =" pyproject.toml
+          echo "--- Generated _version.py ---"
+          cat python/geoslice/_version.py
+
+      - name: Build sdist and wheel
+        run: |
+          pip install build
+          # Now we can use standard isolation because pyproject.toml is static!
+          # This automatically handles installing numpy/wheel for the build.
+          python -m build
 
       - name: Verify built version
         run: |
           ls -la dist/
           # Fail if the file name still contains 0.0.1 (unless that is the tag)
           if ls dist/*0.0.1* 1> /dev/null 2>&1 && [ "${{ steps.version.outputs.VERSION }}" != "0.0.1" ]; then
-            echo "ERROR: Build generated version 0.0.1 instead of ${{ steps.version.outputs.VERSION }}"
+            echo "ERROR: Build generated version 0.0.1. Patching failed."
             exit 1
           fi
 
@@ -95,8 +104,7 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          # If using Trusted Publishing (OIDC), keep password commented out.
-          # If using a Token secret, uncomment the next line:
+          # If using Token, uncomment the line below.
           password: ${{ secrets.PYPI_API_TOKEN }}
           attestations: false
 
