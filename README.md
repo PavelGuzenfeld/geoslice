@@ -2,7 +2,7 @@
 
 Ultra-fast geospatial windowing with zero-copy memory mapping.
 
-[![CI](https://github.com/yourusername/geoslice/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/geoslice/actions/workflows/ci.yml)
+[![CI](https://github.com/PavelGuzenfeld/geoslice/actions/workflows/publish.yml/badge.svg)](https://github.com/PavelGuzenfeld/geoslice/actions/workflows/publish.yml)
 [![PyPI](https://img.shields.io/pypi/v/geoslice.svg)](https://pypi.org/project/geoslice/)
 [![Python](https://img.shields.io/pypi/pyversions/geoslice.svg)](https://pypi.org/project/geoslice/)
 
