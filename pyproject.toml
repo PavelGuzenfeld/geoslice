@@ -1,14 +1,14 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "numpy>=1.20"]
+requires = ["setuptools>=45", "wheel", "numpy>=1.20", "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "geoslice"
-version = "0.0.1"
+dynamic = ["version"]
 description = "Ultra-fast geospatial windowing with zero-copy memory mapping"
 readme = "README.md"
 license = {text = "MIT"}
-authors = [{name = "GeoSlice Authors"}]
+authors = [{name = "Pavel Guzenfeld"}]
 requires-python = ">=3.8"
 keywords = ["geospatial", "gis", "mmap", "raster", "drone", "performance"]
 classifiers = [
@@ -44,15 +44,21 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/geoslice"
-Repository = "https://github.com/yourusername/geoslice"
-Documentation = "https://github.com/yourusername/geoslice#readme"
+Homepage = "https://github.com/PavelGuzenfeld/geoslice"
+Repository = "https://github.com/PavelGuzenfeld/geoslice"
+Documentation = "https://github.com/PavelGuzenfeld/geoslice#readme"
+Issues = "https://github.com/PavelGuzenfeld/geoslice/issues"
 
 [tool.setuptools.packages.find]
 where = ["python"]
 
 [tool.setuptools.package-data]
 geoslice = ["py.typed"]
+
+[tool.setuptools_scm]
+write_to = "python/geoslice/_version.py"
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
