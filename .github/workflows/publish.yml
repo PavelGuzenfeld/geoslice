@@ -18,7 +18,7 @@ jobs:
       - name: Get version from tag
         id: version
         run: |
-          # Extract version from tag (v0.0.2 -> 0.0.2)
+          # Strip the 'v' prefix
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
@@ -30,15 +30,23 @@ jobs:
 
       - name: Build sdist and wheel
         env:
+          # Pass the version explicitly to setuptools_scm
           SETUPTOOLS_SCM_PRETEND_VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          pip install build setuptools-scm
-          echo "Forcing version: $SETUPTOOLS_SCM_PRETEND_VERSION"
-          python -m build
+          pip install build setuptools setuptools-scm
+          # --no-isolation is CRITICAL here:
+          # It ensures the build uses the 'setuptools-scm' we just installed
+          # instead of creating an empty isolated env that ignores the version tag.
+          python -m build --sdist --wheel --outdir dist/ --no-isolation
 
       - name: Verify built version
         run: |
           ls -la dist/
+          # Fail if the file name still contains 0.0.1 (unless that is the tag)
+          if ls dist/*0.0.1* 1> /dev/null 2>&1 && [ "${{ steps.version.outputs.VERSION }}" != "0.0.1" ]; then
+            echo "ERROR: Build generated version 0.0.1 instead of ${{ steps.version.outputs.VERSION }}"
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
@@ -68,7 +76,7 @@ jobs:
         run: pip install dist/*.whl
 
       - name: Test import
-        run: python -c "from geoslice import FastGeoMap, GeoTransform, FlightPath; print('OK')"
+        run: python -c "from geoslice import FastGeoMap, GeoTransform, FlightPath; print('Import OK')"
 
   publish:
     name: Publish to PyPI
@@ -87,9 +95,11 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          # Uses trusted publishing by default (OIDC)
-          # Falls back to token if PYPI_API_TOKEN secret exists
+          # If using Trusted Publishing (OIDC), do NOT set password.
+          # If using a Token secret, keep this line.
+          # To fix the warning about attestations, we explicitly disable them if using a password.
           password: ${{ secrets.PYPI_API_TOKEN }}
+          attestations: false
 
   create-release:
     name: Create GitHub Release
