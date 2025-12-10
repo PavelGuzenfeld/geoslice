@@ -12,6 +12,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for setuptools-scm
+          fetch-tags: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -20,8 +23,12 @@ jobs:
 
       - name: Build sdist and wheel
         run: |
-          pip install build
+          pip install build setuptools-scm
           python -m build
+
+      - name: Verify version
+        run: |
+          python -c "from setuptools_scm import get_version; print(f'Version: {get_version()}')"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -69,6 +76,10 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # Uses trusted publishing by default (OIDC)
+          # Falls back to token if PYPI_API_TOKEN secret exists
+          password: ${{ secrets.PYPI_API_TOKEN }}
 
   create-release:
     name: Create GitHub Release
