@@ -8,34 +8,39 @@ Ultra-fast geospatial windowing with zero-copy memory mapping.
 
 ## Performance
 
-### vs Rasterio (real-world GeoTIFF)
-
-| Method | Throughput | Speedup |
-|--------|------------|---------|
-| **GeoSlice (mmap)** | ~600k ops/s | **213x** |
-| Rasterio | ~2.7k ops/s | 1x |
-
-### Micro-benchmarks (synthetic data)
+### Head-to-Head: GeoSlice vs Rasterio
 
 ```
-Name                          Mean        Ops/s       Notes
-─────────────────────────────────────────────────────────────
-window_access_speed           1.3μs       761,344     Single 512x512 window
-flight_path_simulation        15.2μs      65,551      50 waypoints pipeline
-random_windows                131.8μs     7,585       100 random positions
-sequential_windows            139.9μs     7,145       100 sequential windows
-geo_transform_speed           2.1ms       475         1000 coord transforms
+============================================================
+COMPARISON: 100 x 512x512 windows (4096x4096 4-band image)
+============================================================
+Method               Time (s)     Ops/s        Speedup   
+------------------------------------------------------------
+GeoSlice (mmap)      0.0003       305,737      154.6x
+Rasterio             0.0506       1,977        1.0x
+============================================================
 ```
+
+### Detailed Benchmarks
+
+| Test | GeoSlice | Rasterio | Speedup |
+|------|----------|----------|---------|
+| Single 512x512 window | 1.4μs (690k ops/s) | 170μs (5.9k ops/s) | **117x** |
+| 100 sequential windows | 129μs (7.7k ops/s) | 16.6ms (60 ops/s) | **128x** |
+| 100 random windows | 126μs (8.0k ops/s) | 30.4ms (33 ops/s) | **241x** |
+| 50-waypoint flight sim | 24μs (41k ops/s) | 1.4ms (707 ops/s) | **59x** |
+
+### Coordinate Transform Performance
+
+| Operation | Time | Throughput |
+|-----------|------|------------|
+| latlon→pixel (×1000) | 2.0ms | 494 ops/s |
+| FOV→pixels (×1000) | 203μs | 4,937 ops/s |
 
 ## Install
 
 ```bash
 pip install geoslice
-```
-
-With C++ backend (recommended):
-```bash
-pip install geoslice[cpp]
 ```
 
 For converting GeoTIFFs:
@@ -67,7 +72,7 @@ from geoslice import FastGeoMap
 
 loader = FastGeoMap("output_map")
 
-# Zero-copy window access (~760k ops/s)
+# Zero-copy window access (~690k ops/s)
 window = loader.get_window(x=100, y=100, width=512, height=512)
 print(window.shape)  # (bands, height, width)
 ```
@@ -88,7 +93,7 @@ path = FlightPath.spiral(
     altitudes=[50, 100, 150, 200],
 )
 
-# Extract windows along path
+# Extract windows along path (~41k waypoints/sec)
 for state in path:
     win = FlightPath.state_to_window(state, geo)
     if win.is_valid(loader.width, loader.height):
@@ -132,17 +137,17 @@ FlightPath.grid(min_lat, min_lon, max_lat, max_lon, rows, cols, altitude_m)
 
 ## How It Works
 
-Standard libraries (Rasterio, OpenCV) read compressed data:
+**Rasterio (standard approach):**
 ```
-Seek → Read → Decompress → Copy to RAM
+Seek → Read → Decompress → Allocate → Copy to RAM
 ```
 
-GeoSlice uses memory-mapped raw binary:
+**GeoSlice (mmap approach):**
 ```
 Pointer arithmetic → OS pages in 4KB chunks on-demand
 ```
 
-The OS kernel handles caching, prefetching, and memory management.
+The OS kernel handles caching, prefetching, and memory management. Random access is **241x faster** because there's no decompression overhead.
 
 ## Development
 
@@ -163,39 +168,25 @@ pip install -e ".[dev]"
 ### Run Tests
 
 ```bash
-# Python tests
+# All tests
 pytest -v
 
-# With benchmark details
-pytest -v --benchmark-only
+# Benchmarks with comparison table
+pytest tests/test_benchmark.py -v -s
 
-# C++ tests (requires build)
+# Just the comparison report
+pytest tests/test_benchmark.py::TestDirectComparison -v -s
+
+# Detailed benchmark stats
+pytest tests/test_benchmark.py --benchmark-only --benchmark-columns=min,max,mean,ops
+```
+
+### Build C++ (optional)
+
+```bash
 cmake -B build -DBUILD_PYTHON=OFF
 cmake --build build
 ctest --test-dir build --output-on-failure
-```
-
-### Test with Real Data
-
-```bash
-# Convert your GeoTIFF
-python -c "from geoslice import convert_tif_to_raw; convert_tif_to_raw('your_image.tif', 'processed_map')"
-
-# Benchmark
-python -c "
-from geoslice import FastGeoMap
-import time
-
-loader = FastGeoMap('processed_map')
-print(f'Loaded: {loader.shape}')
-
-start = time.perf_counter()
-for i in range(1000):
-    w = loader.get_window(i*10 % 1000, i*10 % 1000, 512, 512)
-    _ = w[0,0,0]
-elapsed = time.perf_counter() - start
-print(f'1000 windows: {elapsed:.4f}s ({1000/elapsed:.0f} ops/s)')
-"
 ```
 
 ## C++ Usage
@@ -208,12 +199,6 @@ auto view = reader.get_window(100, 100, 512, 512);
 
 // Zero-copy access
 uint8_t pixel = view.at<uint8_t>(0, 0, 0);  // band, y, x
-```
-
-Build:
-```bash
-cmake -B build -DBUILD_PYTHON=OFF
-cmake --build build
 ```
 
 ## Release
