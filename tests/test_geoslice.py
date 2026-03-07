@@ -83,15 +83,18 @@ class TestFastGeoMap:
         assert not loader.is_valid_window(-1, 0, 10, 10)
         assert not loader.is_valid_window(0, 0, 201, 10)
 
-    def test_window_clamping(self, test_data_dir):
+    def test_window_out_of_bounds(self, test_data_dir):
         loader = FastGeoMap(test_data_dir, use_cpp=False)
 
-        # Request window that extends past bounds
-        window = loader.get_window(195, 95, 20, 20)
+        # Request window that extends past bounds — should raise
+        with pytest.raises(ValueError):
+            loader.get_window(195, 95, 20, 20)
 
-        # Should be clamped
-        assert window.shape[1] <= 5
-        assert window.shape[2] <= 5
+    def test_window_negative_coords(self, test_data_dir):
+        loader = FastGeoMap(test_data_dir, use_cpp=False)
+
+        with pytest.raises(ValueError):
+            loader.get_window(-1, 0, 10, 10)
 
     def test_file_not_found(self):
         with pytest.raises(FileNotFoundError):

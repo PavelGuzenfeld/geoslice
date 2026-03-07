@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(geoslice VERSION 0.0.1 LANGUAGES CXX)
+project(geoslice VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -20,7 +20,7 @@ target_include_directories(geoslice_core PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
-target_compile_options(geoslice_core PRIVATE -O3 -march=native -ffast-math)
+target_compile_options(geoslice_core PRIVATE -O3 -march=native)
 
 # Python bindings
 if(BUILD_PYTHON)

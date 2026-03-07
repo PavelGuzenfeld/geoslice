@@ -2,7 +2,7 @@
 
 Ultra-fast geospatial windowing with zero-copy memory mapping.
 
-[![CI](https://github.com/PavelGuzenfeld/geoslice/actions/workflows/publish.yml/badge.svg)](https://github.com/PavelGuzenfeld/geoslice/actions/workflows/publish.yml)
+[![CI](https://github.com/PavelGuzenfeld/geoslice/actions/workflows/ci.yml/badge.svg)](https://github.com/PavelGuzenfeld/geoslice/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/geoslice.svg)](https://pypi.org/project/geoslice/)
 [![Python](https://img.shields.io/pypi/pyversions/geoslice.svg)](https://pypi.org/project/geoslice/)
 
@@ -25,17 +25,17 @@ Rasterio             0.0506       1,977        1.0x
 
 | Test | GeoSlice | Rasterio | Speedup |
 |------|----------|----------|---------|
-| Single 512x512 window | 1.4μs (690k ops/s) | 170μs (5.9k ops/s) | **117x** |
-| 100 sequential windows | 129μs (7.7k ops/s) | 16.6ms (60 ops/s) | **128x** |
-| 100 random windows | 126μs (8.0k ops/s) | 30.4ms (33 ops/s) | **241x** |
-| 50-waypoint flight sim | 24μs (41k ops/s) | 1.4ms (707 ops/s) | **59x** |
+| Single 512x512 window | 1.4us (690k ops/s) | 170us (5.9k ops/s) | **117x** |
+| 100 sequential windows | 129us (7.7k ops/s) | 16.6ms (60 ops/s) | **128x** |
+| 100 random windows | 126us (8.0k ops/s) | 30.4ms (33 ops/s) | **241x** |
+| 50-waypoint flight sim | 24us (41k ops/s) | 1.4ms (707 ops/s) | **59x** |
 
 ### Coordinate Transform Performance
 
 | Operation | Time | Throughput |
 |-----------|------|------------|
-| latlon→pixel (×1000) | 2.0ms | 494 ops/s |
-| FOV→pixels (×1000) | 203μs | 4,937 ops/s |
+| latlon->pixel (x1000) | 2.0ms | 494 ops/s |
+| FOV->pixels (x1000) | 203us | 4,937 ops/s |
 
 ## Install
 
@@ -48,6 +48,9 @@ For converting GeoTIFFs:
 pip install geoslice[convert]
 sudo apt install gdal-bin  # Linux
 ```
+
+**Supported Python:** 3.8+
+**Supported OS:** Linux, macOS
 
 ## Quick Start
 
@@ -75,6 +78,10 @@ loader = FastGeoMap("output_map")
 # Zero-copy window access (~690k ops/s)
 window = loader.get_window(x=100, y=100, width=512, height=512)
 print(window.shape)  # (bands, height, width)
+
+# Bounds-checked — raises ValueError if out of range
+if loader.is_valid_window(x, y, w, h):
+    window = loader.get_window(x, y, w, h)
 ```
 
 ### 3. Drone Simulation
@@ -109,9 +116,9 @@ for state in path:
 FastGeoMap(base_name: str, use_cpp: bool = None)
 ```
 
-- `get_window(x, y, width, height)` → `np.ndarray` (view, zero-copy)
-- `get_window_copy(x, y, width, height)` → `np.ndarray` (copy)
-- `is_valid_window(x, y, width, height)` → `bool`
+- `get_window(x, y, width, height)` -> `np.ndarray` (view, zero-copy). Raises `ValueError` if out of bounds.
+- `get_window_copy(x, y, width, height)` -> `np.ndarray` (copy, safe for modification)
+- `is_valid_window(x, y, width, height)` -> `bool`
 - `.width`, `.height`, `.bands`, `.shape`, `.meta`
 
 ### GeoTransform
@@ -120,9 +127,9 @@ FastGeoMap(base_name: str, use_cpp: bool = None)
 GeoTransform(transform: tuple, utm_zone: int = 36)
 ```
 
-- `latlon_to_pixel(lat, lon)` → `(px, py)`
-- `pixel_to_latlon(px, py)` → `(lat, lon)`
-- `fov_to_pixels(altitude_m, fov_deg)` → `(width, height)`
+- `latlon_to_pixel(lat, lon)` -> `(px, py)`. Validates lat in [-80, 84] (UTM range).
+- `pixel_to_latlon(px, py)` -> `(lat, lon)`
+- `fov_to_pixels(altitude_m, fov_deg)` -> `(width, height)`
 
 ### FlightPath
 
@@ -132,33 +139,79 @@ FlightPath.linear(start_lat, start_lon, end_lat, end_lon, num_waypoints, altitud
 FlightPath.grid(min_lat, min_lon, max_lat, max_lon, rows, cols, altitude_m)
 ```
 
-- `state_to_window(state, geo)` → `WindowParams`
-- `compute_windows(geo)` → `List[WindowParams]`
+- `state_to_window(state, geo)` -> `WindowParams`
+- `compute_windows(geo)` -> `List[WindowParams]`
 
 ## How It Works
 
 **Rasterio (standard approach):**
 ```
-Seek → Read → Decompress → Allocate → Copy to RAM
+Seek -> Read -> Decompress -> Allocate -> Copy to RAM
 ```
 
 **GeoSlice (mmap approach):**
 ```
-Pointer arithmetic → OS pages in 4KB chunks on-demand
+Pointer arithmetic -> OS pages in 4KB chunks on-demand
 ```
 
 The OS kernel handles caching, prefetching, and memory management. Random access is **241x faster** because there's no decompression overhead.
+
+### Data Format
+
+GeoSlice operates on pre-converted raw binary files (BSQ interleave) with JSON metadata sidecars:
+
+- **`.bin`** — Raw raster data in Band Sequential format (no compression)
+- **`.json`** — Metadata: dtype, dimensions, affine transform, CRS
+
+The conversion step (`convert_tif_to_raw` or `gdal_translate`) is a one-time cost that enables all subsequent reads to be zero-copy via `mmap`.
+
+### Input Validation
+
+The library validates inputs at system boundaries:
+- JSON metadata is checked for required fields and valid values
+- Binary file size is verified against metadata dimensions
+- Window coordinates are bounds-checked before access
+- UTM latitude range is validated in coordinate transforms
+- Cache keys use collision-resistant hashing with coordinate verification
+
+## C++ Usage
+
+```cpp
+#include <geoslice/geoslice.hpp>
+
+geoslice::MMapReader reader("processed_map");
+auto view = reader.get_window(100, 100, 512, 512);
+
+// Zero-copy access
+uint8_t pixel = view.at<uint8_t>(0, 0, 0);  // band, y, x
+```
+
+### WindowCache
+
+Thread-safe LRU cache with `shared_ptr` semantics — cached data stays valid even after eviction as long as you hold a reference:
+
+```cpp
+geoslice::WindowCache cache(64 * 1024 * 1024); // 64MB
+
+cache.put(x, y, w, h, data_ptr, size);
+
+auto entry = cache.get(x, y, w, h); // shared_ptr<const CachedWindow>
+if (entry) {
+    // Safe to use entry->data even if cache evicts this slot later
+    process(entry->data.data(), entry->data.size());
+}
+```
 
 ## Development
 
 ### Setup
 
 ```bash
-git clone https://github.com/yourusername/geoslice
+git clone https://github.com/PavelGuzenfeld/geoslice
 cd geoslice
 
-# Create venv (use --system-site-packages if you need ROS2)
-python3 -m venv .venv --system-site-packages
+# Create venv
+python3 -m venv .venv
 source .venv/bin/activate
 
 # Install with dev dependencies
@@ -189,27 +242,15 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-## C++ Usage
-
-```cpp
-#include <geoslice/geoslice.hpp>
-
-geoslice::MMapReader reader("processed_map");
-auto view = reader.get_window(100, 100, 512, 512);
-
-// Zero-copy access
-uint8_t pixel = view.at<uint8_t>(0, 0, 0);  // band, y, x
-```
-
 ## Release
 
 Releases are automated via GitHub Actions on version tags:
 
 ```bash
-# Update version in pyproject.toml and python/geoslice/__init__.py
+# Update version in pyproject.toml, setup.py, geoslice.hpp, __init__.py
 git add -A
-git commit -m "Release v0.0.2"
-git tag v0.0.2
+git commit -m "Release v0.1.0"
+git tag v0.1.0
 git push && git push --tags
 ```
 

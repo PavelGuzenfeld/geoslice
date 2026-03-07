@@ -5,5 +5,5 @@
 #include "geoslice/window_cache.hpp"
 
 namespace geoslice {
-    constexpr const char* VERSION = "0.0.1";
+    constexpr const char* VERSION = "0.1.0";
 }

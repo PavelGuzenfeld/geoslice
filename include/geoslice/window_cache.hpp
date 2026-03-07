@@ -18,7 +18,7 @@ class WindowCache {
 public:
     explicit WindowCache(size_t max_bytes = 256 * 1024 * 1024); // 256MB default
 
-    const uint8_t* get(int x, int y, int width, int height);
+    std::shared_ptr<const CachedWindow> get(int x, int y, int width, int height);
     void put(int x, int y, int width, int height, const uint8_t* data, size_t size);
     void clear();
 
@@ -36,7 +36,8 @@ private:
     size_t hits_ = 0;
     size_t misses_ = 0;
 
-    std::list<std::pair<uint64_t, CachedWindow>> lru_list_;
+    using Entry = std::pair<uint64_t, std::shared_ptr<CachedWindow>>;
+    std::list<Entry> lru_list_;
     std::unordered_map<uint64_t, decltype(lru_list_)::iterator> cache_map_;
     mutable std::mutex mutex_;
 };

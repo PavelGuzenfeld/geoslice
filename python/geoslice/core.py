@@ -122,14 +122,11 @@ class FastGeoMap:
         if self._use_cpp:
             return self._reader.get_window(x, y, width, height)
 
-        # Clamp to bounds
-        x = max(0, x)
-        y = max(0, y)
-        width = min(width, self.meta.width - x)
-        height = min(height, self.meta.height - y)
-
-        if width <= 0 or height <= 0:
-            return np.empty((self.meta.count, 0, 0), dtype=self._dtype)
+        if not self.is_valid_window(x, y, width, height):
+            raise ValueError(
+                f"Window out of bounds: ({x}, {y}, {width}, {height}) "
+                f"for raster of size ({self.meta.width}, {self.meta.height})"
+            )
 
         return self._data[:, y : y + height, x : x + width]
 

@@ -13,17 +13,28 @@ std::string extract_string(const std::string& json, const std::string& key) {
     auto pos = json.find("\"" + key + "\"");
     if (pos == std::string::npos) return "";
     pos = json.find(':', pos);
-    auto start = json.find('"', pos) + 1;
+    if (pos == std::string::npos) return "";
+    auto start = json.find('"', pos);
+    if (start == std::string::npos) return "";
+    start++;
     auto end = json.find('"', start);
+    if (end == std::string::npos) return "";
     return json.substr(start, end - start);
 }
 
 int extract_int(const std::string& json, const std::string& key) {
     auto pos = json.find("\"" + key + "\"");
     if (pos == std::string::npos) return 0;
-    pos = json.find(':', pos) + 1;
-    while (json[pos] == ' ') pos++;
-    return std::stoi(json.substr(pos));
+    pos = json.find(':', pos);
+    if (pos == std::string::npos) return 0;
+    pos++;
+    while (pos < json.size() && json[pos] == ' ') pos++;
+    if (pos >= json.size()) return 0;
+    try {
+        return std::stoi(json.substr(pos));
+    } catch (...) {
+        return 0;
+    }
 }
 
 std::array<double, 6> extract_transform(const std::string& json) {
@@ -31,11 +42,19 @@ std::array<double, 6> extract_transform(const std::string& json) {
     auto pos = json.find("\"transform\"");
     if (pos == std::string::npos) return result;
     pos = json.find('[', pos);
+    if (pos == std::string::npos) return result;
     for (int i = 0; i < 6; i++) {
         pos++;
-        while (json[pos] == ' ' || json[pos] == '\n') pos++;
-        result[i] = std::stod(json.substr(pos));
-        pos = json.find_first_of(",]", pos);
+        while (pos < json.size() && (json[pos] == ' ' || json[pos] == '\n' || json[pos] == '\r' || json[pos] == '\t')) pos++;
+        if (pos >= json.size()) return result;
+        try {
+            result[i] = std::stod(json.substr(pos));
+        } catch (...) {
+            return result;
+        }
+        auto next = json.find_first_of(",]", pos);
+        if (next == std::string::npos) return result;
+        pos = next;
     }
     return result;
 }
@@ -48,7 +67,7 @@ size_t GeoMetadata::pixel_size() const {
     if (dtype == "uint16" || dtype == "int16") return 2;
     if (dtype == "uint32" || dtype == "int32" || dtype == "float32") return 4;
     if (dtype == "float64") return 8;
-    return 1;
+    throw std::runtime_error("Unsupported dtype: " + dtype);
 }
 
 size_t GeoMetadata::total_bytes() const {
@@ -69,19 +88,41 @@ MMapReader::MMapReader(const std::string& base_path) {
     meta_.transform = extract_transform(json);
     meta_.crs = extract_string(json, "crs");
 
+    // Validate parsed metadata
+    if (meta_.dtype.empty())
+        throw std::runtime_error("Missing or invalid 'dtype' in " + base_path + ".json");
+    if (meta_.count <= 0)
+        throw std::runtime_error("Invalid 'count' in " + base_path + ".json: must be > 0");
+    if (meta_.height <= 0)
+        throw std::runtime_error("Invalid 'height' in " + base_path + ".json: must be > 0");
+    if (meta_.width <= 0)
+        throw std::runtime_error("Invalid 'width' in " + base_path + ".json: must be > 0");
+
     // Memory map binary file
     std::string bin_path = base_path + ".bin";
     fd_ = open(bin_path.c_str(), O_RDONLY);
     if (fd_ < 0) throw std::runtime_error("Cannot open " + bin_path);
 
     struct stat st;
-    fstat(fd_, &st);
+    if (fstat(fd_, &st) != 0) {
+        close(fd_);
+        throw std::runtime_error("Cannot stat " + bin_path);
+    }
     mapped_size_ = st.st_size;
+
+    // Validate file size against metadata
+    size_t expected = meta_.total_bytes();
+    if (mapped_size_ < expected) {
+        close(fd_);
+        throw std::runtime_error(
+            "Binary file too small: expected " + std::to_string(expected) +
+            " bytes, got " + std::to_string(mapped_size_) + " (" + bin_path + ")");
+    }
 
     mapped_data_ = mmap(nullptr, mapped_size_, PROT_READ, MAP_PRIVATE, fd_, 0);
     if (mapped_data_ == MAP_FAILED) {
         close(fd_);
-        throw std::runtime_error("mmap failed");
+        throw std::runtime_error("mmap failed for " + bin_path);
     }
 
     // Advise kernel for random access

@@ -27,16 +27,16 @@ TEST_F(WindowCacheTest, PutAndGet) {
 
     cache.put(0, 0, 10, 10, test_data.data(), test_data.size());
 
-    const uint8_t* result = cache.get(0, 0, 10, 10);
+    auto result = cache.get(0, 0, 10, 10);
     ASSERT_NE(result, nullptr);
-    EXPECT_EQ(result[0], test_data[0]);
-    EXPECT_EQ(result[100], test_data[100]);
+    EXPECT_EQ(result->data[0], test_data[0]);
+    EXPECT_EQ(result->data[100], test_data[100]);
 }
 
 TEST_F(WindowCacheTest, MissReturnsNull) {
     geoslice::WindowCache cache(4096);
 
-    const uint8_t* result = cache.get(0, 0, 10, 10);
+    auto result = cache.get(0, 0, 10, 10);
     EXPECT_EQ(result, nullptr);
     EXPECT_EQ(cache.misses(), 1u);
 }
@@ -104,4 +104,39 @@ TEST_F(WindowCacheTest, DuplicatePutNoOp) {
 
     // Size should not change
     EXPECT_EQ(cache.size(), size_after_first);
+}
+
+TEST_F(WindowCacheTest, SharedPtrKeepsDataAliveAfterEviction) {
+    geoslice::WindowCache cache(1024);
+
+    cache.put(0, 0, 10, 10, test_data.data(), 1024);
+
+    // Get a shared_ptr to the cached data
+    auto held = cache.get(0, 0, 10, 10);
+    ASSERT_NE(held, nullptr);
+
+    // Evict by inserting a new entry
+    cache.put(1, 1, 10, 10, test_data.data(), 1024);
+
+    // Original entry is evicted from cache
+    EXPECT_EQ(cache.get(0, 0, 10, 10), nullptr);
+
+    // But our held shared_ptr still has valid data
+    EXPECT_EQ(held->data[0], test_data[0]);
+    EXPECT_EQ(held->data[100], test_data[100]);
+}
+
+TEST_F(WindowCacheTest, LargeCoordinatesWork) {
+    geoslice::WindowCache cache(4096);
+
+    // Coordinates > 65535 would collide with old bit-packing approach
+    cache.put(100000, 200000, 512, 512, test_data.data(), test_data.size());
+
+    auto result = cache.get(100000, 200000, 512, 512);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->data[0], test_data[0]);
+
+    // Different large coordinates should not collide
+    auto miss = cache.get(100001, 200000, 512, 512);
+    EXPECT_EQ(miss, nullptr);
 }

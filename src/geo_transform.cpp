@@ -1,5 +1,7 @@
 #include "geoslice/geo_transform.hpp"
 #include <cmath>
+#include <stdexcept>
+#include <string>
 
 namespace geoslice {
 
@@ -69,6 +71,10 @@ std::pair<double, double> GeoTransform::utm_to_latlon(double x, double y) const 
 }
 
 std::pair<int, int> GeoTransform::latlon_to_pixel(double lat, double lon) const {
+    if (lat < -80.0 || lat > 84.0) {
+        throw std::out_of_range(
+            "Latitude " + std::to_string(lat) + " outside UTM range [-80, 84]");
+    }
     auto [utm_x, utm_y] = latlon_to_utm(lat, lon);
     int px = static_cast<int>((utm_x - origin_x_) / pixel_size_x_);
     int py = static_cast<int>((origin_y_ - utm_y) / pixel_size_y_);

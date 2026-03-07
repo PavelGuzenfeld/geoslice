@@ -16,7 +16,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="geoslice",
-    version="0.0.1",
+    version="0.1.0",
     description="Ultra-fast geospatial windowing with zero-copy memory mapping",
     long_description=Path("README.md").read_text() if Path("README.md").exists() else "",
     long_description_content_type="text/markdown",
@@ -40,6 +40,8 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Topic :: Scientific/Engineering :: GIS",
     ],
 )
