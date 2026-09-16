@@ -1,0 +1,36 @@
+# Diff-scoped mutation gate. See issue #1.
+#
+# Python only for now. The C++ half is declared out below rather than left to
+# look gated: nothing here wires gcov/llvm-cov, so every C++ mutant would run
+# the whole suite for want of a narrowing mechanism, and the GTest targets need
+# a build this config does not have.
+language = "python"
+test_paths = ["tests"]
+
+# src layout — tests import geoslice from python/, not from the repo root, so
+# the candidate walk has to start there or every changed file comes back
+# uncovered.
+import_roots = ["python"]
+
+test_command = 'docker run --rm -e PYTHONPATH=/repo/python -v "$PWD":/repo -w /repo python:3.12-slim bash -c "pip install -q pytest pytest-benchmark numpy && python -m pytest -q --benchmark-disable {tests}"'
+coverage_command = 'docker run --rm -e PYTHONPATH=/repo/python -v "$PWD":/repo -w /repo python:3.12-slim bash -c "pip install -q pytest pytest-cov pytest-benchmark numpy && python -m pytest -q --benchmark-disable --cov={file} --cov-context=test --cov-report= {tests}"'
+coverage_data_file = ".coverage"
+
+# Exit 0 with no pass marker is a runner that never loaded the code, and the
+# gate would read that as every mutant surviving.
+pass_pattern = "passed"
+
+exclude_paths = [
+    "src",
+    "include",
+    "tests/test_geo_transform.cpp",
+    "tests/test_mmap_reader.cpp",
+    "tests/test_window_cache.cpp",
+]
+
+# Layer 0 of the model-V&V rules. Both files carry frame and angle maths with
+# physical constants — WGS84, a UTM series, a camera footprint, a bearing — so
+# they are declared rather than left for the keyword probe to guess at. The spec
+# at docs/model-spec.md is reconstructed from the code and every line is tagged;
+# its (needs intent) lines are the open questions, not agreed requirements.
+model_paths = ["python/geoslice/core.py", "python/geoslice/drone.py"]
