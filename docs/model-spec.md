@@ -49,11 +49,15 @@ that factor away from the equator — about 20% at 36 degrees north, the default
 zone. It is also a planar bearing, not a great-circle initial bearing. Whether a
 planar bearing is intended, and over what leg length, is unstated. (needs intent)
 
-MS-8. `FlightPath.circular` builds waypoints as `lat = center_lat + radius *
-cos(angle)` and `lon = center_lon + radius * sin(angle)`, with `radius` in
-degrees. This carries the same anisotropy as MS-7: the resulting path is an
-ellipse on the ground, not a circle. Whether `radius` is meant to be degrees or
-metres is unstated. (needs intent)
+MS-8. `FlightPath.spiral` builds waypoints as `lat = center_lat + radius *
+cos(angle)` and `lon = center_lon + radius * sin(angle)`, with `radius =
+radius_deg * (i + 1)` — an Archimedean spiral whose arm grows by `radius_deg`
+per waypoint — and `radius_deg` in degrees. It carries the same anisotropy as
+the bearing above (MS-7): a degree of longitude is not a degree of latitude on
+the ground, so each turn is an ellipse, not a circle, flattened by `cos(lat)`.
+Whether
+`radius_deg` was meant to be degrees or metres is unstated, as is whether the
+eccentricity matters at the intended latitude. (needs intent)
 
 MS-9. The UTM series of MS-2 is truncated, so it degrades with distance from the
 central meridian and fails near the poles. The usable band is unstated.
@@ -61,6 +65,15 @@ central meridian and fails near the poles. The usable band is unstated.
 
 MS-10. No datum transformation. Input coordinates are assumed to be WGS84
 already. (reconstructed)
+
+MS-17. `spiral` sets `heading_deg = headings[i]` while placing the waypoint at
+that same angle measured from the centre, so the two are the same number by
+construction. Negating either offset — `center_lat - radius * cos(angle)` —
+mirrors the path about the centre and leaves every `heading_deg` naming a
+direction the waypoint no longer lies in, with no test able to tell, because the
+radii are unchanged. That is only a defect if `heading_deg` means bearing from
+the centre; if it means direction of travel it is already wrong, since a spiral's
+tangent is not its radius. Which of the two it is, is unstated. (needs intent)
 
 ## Validity envelope
 
