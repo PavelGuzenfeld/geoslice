@@ -1,0 +1,40 @@
+# Mutants that survive because docs/model-spec.md has not settled what the code
+# is supposed to compute. Each reason names the spec line, and each says why a
+# test would be wrong rather than merely hard: writing one would freeze a
+# simplification nobody has confirmed, and the gate would then report agreement
+# with the implementation as evidence.
+#
+# These come out as the (needs intent) lines get answered. They are not
+# permanent, and they are not a judgement that the code is correct.
+
+[[waiver]]
+file = "python/geoslice/drone.py"
+line = 115
+column = 42
+old = """end_lon - start_lon"""
+new = """end_lon + start_lon"""
+reason = "MS-5/MS-7: the bearing is atan2 over raw degree differences, and the spec flags it as needing intent — a planar bearing that ignores the cos(lat) scaling. Pinning any value here asserts that simplification is correct, which is the open question."
+
+[[waiver]]
+file = "python/geoslice/drone.py"
+line = 115
+column = 63
+old = """end_lat - start_lat"""
+new = """end_lat + start_lat"""
+reason = "MS-5/MS-7, same expression as above. The latitude term of the same unsettled bearing."
+
+[[waiver]]
+file = "python/geoslice/drone.py"
+line = 90
+column = 24
+old = """center_lat + radius * np.cos(angle)"""
+new = """center_lat - radius * np.cos(angle)"""
+reason = "MS-17: mirroring the offset leaves every heading_deg naming a direction the waypoint no longer lies in, and the radii are unchanged so no shape test can see it. Whether heading_deg means bearing from the centre or direction of travel is unstated, and the answer decides whether this is a defect at all."
+
+[[waiver]]
+file = "python/geoslice/drone.py"
+line = 91
+column = 24
+old = """center_lon + radius * np.sin(angle)"""
+new = """center_lon - radius * np.sin(angle)"""
+reason = "MS-17, same construction as above. The longitude term of the same unsettled heading-to-position relationship."
