@@ -50,3 +50,6 @@ __pycache__/
 
 # Python virtual environment
 .venv/
+
+# Left by a gated run; the gate reads it back from the repo root.
+.coverage

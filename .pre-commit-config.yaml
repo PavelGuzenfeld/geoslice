@@ -1,4 +1,15 @@
 repos:
+  # Diff-scoped mutation gate (issue #1). Python only; the C++ half is declared
+  # out in .mutation-gate.toml, which says why. Needs Docker.
+  - repo: local
+    hooks:
+      - id: mutation-gate
+        name: mutation gate (diff-scoped)
+        entry: mutation-gate --staged
+        language: system
+        files: ^(python/geoslice/.*\.py|tests/.*\.py)$
+        pass_filenames: false
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
