@@ -31,6 +31,7 @@ exclude_paths = [
 # Layer 0 of the model-V&V rules. Both files carry frame and angle maths with
 # physical constants — WGS84, a UTM series, a camera footprint, a bearing — so
 # they are declared rather than left for the keyword probe to guess at. The spec
-# at docs/model-spec.md is reconstructed from the code and every line is tagged;
-# its (needs intent) lines are the open questions, not agreed requirements.
+# is reconstructed from the code and every line is tagged; its (needs intent)
+# lines are the open questions, not agreed requirements.
 model_paths = ["python/geoslice/core.py", "python/geoslice/drone.py"]
+model_spec = "issue:6"
