@@ -4,8 +4,8 @@ Adopting the mutation gate measured a 14% kill rate on drone.py: 42 of 49
 mutants survived. These pin the behaviour each function's name, signature and
 docstring already promise.
 
-They deliberately do NOT pin the two things docs/model-spec.md flags as needing
-intent — the bearing value of MS-5/MS-7 and the radius units of MS-8. A test
+They deliberately do NOT pin the two things the model spec (issue #6) flags as
+needing intent — the bearing value of MS-5/MS-7 and the radius units of MS-8. A test
 written against what the code currently computes there would freeze a
 simplification nobody has confirmed, which is the opposite of useful.
 """

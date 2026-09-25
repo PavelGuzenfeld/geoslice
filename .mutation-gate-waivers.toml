@@ -1,5 +1,5 @@
-# Mutants that survive because docs/model-spec.md has not settled what the code
-# is supposed to compute. Each reason names the spec line, and each says why a
+# Mutants that survive because the model spec (issue #6) has not settled what
+# the code is supposed to compute. Each reason names the spec line, and each says why a
 # test would be wrong rather than merely hard: writing one would freeze a
 # simplification nobody has confirmed, and the gate would then report agreement
 # with the implementation as evidence.
