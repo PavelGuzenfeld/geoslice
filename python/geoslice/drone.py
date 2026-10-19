@@ -79,22 +79,28 @@ class FlightPath:
             altitudes = [50, 100, 150, 200, 250]
 
         waypoints = []
-        headings = np.linspace(0, 360, num_waypoints, endpoint=False)
+        angles_deg = np.linspace(0, 360, num_waypoints, endpoint=False)
 
         for i in range(num_waypoints):
             radius = radius_deg * (i + 1)
-            angle = np.radians(headings[i])
+            angle = np.radians(angles_deg[i])
 
             waypoints.append(
                 DroneState(
                     lat=center_lat + radius * np.cos(angle),
                     lon=center_lon + radius * np.sin(angle),
                     altitude_m=altitudes[i % len(altitudes)],
-                    heading_deg=headings[i],
                     fov_deg=fov_deg,
                     timestamp=float(i),
                 )
             )
+
+        headings = [
+            cls._heading_deg(here.lat, here.lon, there.lat, there.lon)
+            for here, there in zip(waypoints, waypoints[1:])
+        ]
+        for waypoint, heading in zip(waypoints, headings + headings[-1:]):
+            waypoint.heading_deg = heading
 
         return cls(waypoints)
 
