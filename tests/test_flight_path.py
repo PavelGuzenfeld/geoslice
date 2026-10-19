@@ -98,6 +98,11 @@ class TestSpiral:
             [e % 360 for e in expected], abs=1e-12
         )
 
+    def test_a_lone_waypoint_has_no_leg_and_heads_zero(self):
+        """MS-17: a one-waypoint spiral has no leg and heads 0."""
+        path = FlightPath.spiral(10.0, 20.0, num_waypoints=1, radius_deg=0.5)
+        assert [w.heading_deg for w in path] == [0.0]
+
     def test_altitudes_cycle_through_the_given_list(self):
         path = FlightPath.spiral(0.0, 0.0, num_waypoints=5, altitudes=[10.0, 20.0])
         assert [w.altitude_m for w in path] == [10.0, 20.0, 10.0, 20.0, 10.0]
