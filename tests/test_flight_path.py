@@ -114,6 +114,12 @@ class TestLinear:
         path = FlightPath.linear(59.5, 34.0, 60.5, 36.0, num_waypoints=3)
         assert [w.heading_deg for w in path] == pytest.approx([45.0, 45.0, 45.0], abs=1e-13)
 
+    def test_a_leg_at_sixty_north_heading_south_west_turns_225_clockwise_not_45(self):
+        """MS-7: the reverse of the 45 degree leg heads 225 clockwise from north.
+        Tolerance: the same cos(60 deg) rounding; the range of the angle is not pinned."""
+        path = FlightPath.linear(60.5, 36.0, 59.5, 34.0, num_waypoints=3)
+        assert [w.heading_deg % 360 for w in path] == pytest.approx([225.0] * 3, abs=1e-13)
+
     def test_it_starts_at_the_start_and_ends_at_the_end(self):
         # No tolerance: np.linspace pins both endpoints exactly, verified.
         path = FlightPath.linear(1.0, 2.0, 3.0, 4.0, num_waypoints=5)
