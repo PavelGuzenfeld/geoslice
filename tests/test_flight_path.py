@@ -99,10 +99,12 @@ class TestLinear:
     under any bearing definition; the off-axis value is MS-5/MS-7 and stays open."""
 
     def test_a_leg_due_north_heads_zero_not_east(self):
+        """MS-18: a northbound meridian leg heads 0."""
         path = FlightPath.linear(32.0, 34.0, 33.0, 34.0, num_waypoints=3)
         assert [w.heading_deg for w in path] == [0.0, 0.0, 0.0]
 
     def test_a_leg_due_south_heads_one_eighty_not_back_north(self):
+        """MS-18: a southbound meridian leg heads 180."""
         path = FlightPath.linear(33.0, 34.0, 32.0, 34.0, num_waypoints=3)
         assert [w.heading_deg for w in path] == [180.0, 180.0, 180.0]
 
