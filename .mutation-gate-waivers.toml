@@ -9,22 +9,6 @@
 
 [[waiver]]
 file = "python/geoslice/drone.py"
-line = 115
-column = 42
-old = """end_lon - start_lon"""
-new = """end_lon + start_lon"""
-reason = "MS-5/MS-7: the bearing is atan2 over raw degree differences, and the spec flags it as needing intent — a planar bearing that ignores the cos(lat) scaling. Pinning any value here asserts that simplification is correct, which is the open question."
-
-[[waiver]]
-file = "python/geoslice/drone.py"
-line = 115
-column = 63
-old = """end_lat - start_lat"""
-new = """end_lat + start_lat"""
-reason = "MS-5/MS-7, same expression as above. The latitude term of the same unsettled bearing."
-
-[[waiver]]
-file = "python/geoslice/drone.py"
 line = 90
 column = 24
 old = """center_lat + radius * np.cos(angle)"""
@@ -38,3 +22,15 @@ column = 24
 old = """center_lon + radius * np.sin(angle)"""
 new = """center_lon - radius * np.sin(angle)"""
 reason = "MS-17, same construction as above. The longitude term of the same unsettled heading-to-position relationship."
+
+[[waiver]]
+check = "no-citation"
+file = "tests/test_flight_path.py"
+test = "test_a_leg_due_north_heads_zero_not_east"
+reason = "A leg along a meridian heads 0 under planar, rhumb and great-circle bearings alike, so the test needs none of the intent MS-5/MS-7 leave open. Both of those lines are still tagged, so citing either would back the test with a spec the implementation wrote."
+
+[[waiver]]
+check = "no-citation"
+file = "tests/test_flight_path.py"
+test = "test_a_leg_due_south_heads_one_eighty_not_back_north"
+reason = "Same as the due-north case: 180 for a southbound meridian leg holds under every bearing definition MS-7 weighs, and MS-5/MS-7 are still tagged."

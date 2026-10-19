@@ -5,7 +5,7 @@ mutants survived. These pin the behaviour each function's name, signature and
 docstring already promise.
 
 They deliberately do NOT pin the two things the model spec (issue #6) flags as
-needing intent — the bearing value of MS-5/MS-7 and the radius units of MS-8. A test
+needing intent — the off-axis bearing of MS-5/MS-7 and the radius units of MS-8. A test
 written against what the code currently computes there would freeze a
 simplification nobody has confirmed, which is the opposite of useful.
 """
@@ -95,8 +95,16 @@ class TestSpiral:
 
 
 class TestLinear:
-    """A straight run between two points. The heading VALUE is MS-5/MS-7 and is
-    left alone; the geometry of the run is not in question."""
+    """A straight run between two points. Due north and due south have one heading
+    under any bearing definition; the off-axis value is MS-5/MS-7 and stays open."""
+
+    def test_a_leg_due_north_heads_zero_not_east(self):
+        path = FlightPath.linear(32.0, 34.0, 33.0, 34.0, num_waypoints=3)
+        assert [w.heading_deg for w in path] == [0.0, 0.0, 0.0]
+
+    def test_a_leg_due_south_heads_one_eighty_not_back_north(self):
+        path = FlightPath.linear(33.0, 34.0, 32.0, 34.0, num_waypoints=3)
+        assert [w.heading_deg for w in path] == [180.0, 180.0, 180.0]
 
     def test_it_starts_at_the_start_and_ends_at_the_end(self):
         # No tolerance: np.linspace pins both endpoints exactly, verified.
