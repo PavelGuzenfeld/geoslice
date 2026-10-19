@@ -4,8 +4,8 @@ Adopting the mutation gate measured a 14% kill rate on drone.py: 42 of 49
 mutants survived. These pin the behaviour each function's name, signature and
 docstring already promise.
 
-They deliberately do NOT pin the two things the model spec (issue #6) flags as
-needing intent — the off-axis bearing of MS-5/MS-7 and the radius units of MS-8. A test
+They deliberately do NOT pin what the model spec (issue #6) flags as
+needing intent — the radius units of MS-8. A test
 written against what the code currently computes there would freeze a
 simplification nobody has confirmed, which is the opposite of useful.
 """
@@ -96,7 +96,7 @@ class TestSpiral:
 
 class TestLinear:
     """A straight run between two points. Due north and due south have one heading
-    under any bearing definition; the off-axis value is MS-5/MS-7 and stays open."""
+    under any bearing definition; off-axis legs count a degree of longitude by cos(lat)."""
 
     def test_a_leg_due_north_heads_zero_not_east(self):
         """MS-18: a northbound meridian leg heads 0."""
@@ -107,6 +107,12 @@ class TestLinear:
         """MS-18: a southbound meridian leg heads 180."""
         path = FlightPath.linear(33.0, 34.0, 32.0, 34.0, num_waypoints=3)
         assert [w.heading_deg for w in path] == [180.0, 180.0, 180.0]
+
+    def test_a_leg_at_sixty_north_counts_a_degree_of_longitude_as_half_a_degree(self):
+        """MS-7: at mean latitude 60, 2 degrees east and 1 north is a 45 degree ground bearing.
+        Tolerance: cos(60 deg) rounds to 0.5000000000000001, moving the bearing ~7e-15 deg."""
+        path = FlightPath.linear(59.5, 34.0, 60.5, 36.0, num_waypoints=3)
+        assert [w.heading_deg for w in path] == pytest.approx([45.0, 45.0, 45.0], abs=1e-13)
 
     def test_it_starts_at_the_start_and_ends_at_the_end(self):
         # No tolerance: np.linspace pins both endpoints exactly, verified.

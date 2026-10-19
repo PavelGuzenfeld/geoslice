@@ -112,7 +112,7 @@ class FlightPath:
         """Generate a linear flight path between two points."""
         lats = np.linspace(start_lat, end_lat, num_waypoints)
         lons = np.linspace(start_lon, end_lon, num_waypoints)
-        heading = math.degrees(math.atan2(end_lon - start_lon, end_lat - start_lat))
+        heading = cls._heading_deg(start_lat, start_lon, end_lat, end_lon)
 
         waypoints = [
             DroneState(
@@ -126,6 +126,12 @@ class FlightPath:
             for i, (lat, lon) in enumerate(zip(lats, lons))
         ]
         return cls(waypoints)
+
+    @staticmethod
+    def _heading_deg(from_lat: float, from_lon: float, to_lat: float, to_lon: float) -> float:
+        """Clockwise from north, with a degree of longitude shortened by cos(mean latitude)."""
+        mean_lat = math.radians((from_lat + to_lat) / 2)
+        return math.degrees(math.atan2((to_lon - from_lon) * math.cos(mean_lat), to_lat - from_lat))
 
     @classmethod
     def grid(
