@@ -137,7 +137,11 @@ class FlightPath:
     def _heading_deg(from_lat: float, from_lon: float, to_lat: float, to_lon: float) -> float:
         """Clockwise from north, with a degree of longitude shortened by cos(mean latitude)."""
         mean_lat = math.radians((from_lat + to_lat) / 2)
-        return math.degrees(math.atan2((to_lon - from_lon) * math.cos(mean_lat), to_lat - from_lat))
+        heading = (
+            math.degrees(math.atan2((to_lon - from_lon) * math.cos(mean_lat), to_lat - from_lat))
+            % 360.0
+        )
+        return heading if heading < 360.0 else 0.0
 
     @classmethod
     def grid(
