@@ -4,11 +4,13 @@ Adopting the mutation gate measured a 14% kill rate on drone.py: 42 of 49
 mutants survived. These pin the behaviour each function's name, signature and
 docstring already promise.
 
-They deliberately do NOT pin the two things the model spec (issue #6) flags as
-needing intent — the off-axis bearing of MS-5/MS-7 and the radius units of MS-8. A test
+They deliberately do NOT pin what the model spec (issue #6) flags as
+needing intent — the radius units of MS-8. A test
 written against what the code currently computes there would freeze a
 simplification nobody has confirmed, which is the opposite of useful.
 """
+
+import math
 
 import numpy as np
 import pytest
@@ -81,9 +83,20 @@ class TestSpiral:
         # decomposed into components and recombined, nothing accumulates.
         assert offset == pytest.approx(0.25, abs=1e-15)
 
-    def test_headings_divide_the_full_turn_evenly_and_do_not_repeat_zero(self):
-        path = FlightPath.spiral(0.0, 0.0, num_waypoints=4)
-        assert [w.heading_deg for w in path] == [0.0, 90.0, 180.0, 270.0]
+    def test_each_waypoint_heads_along_the_leg_to_the_next_not_away_from_the_centre(self):
+        """MS-17 with the MS-7 bearing over (70, 0), (60, 20), (30, 0), (60, -40); the last repeats.
+        Tolerance: cos(90 deg) and sin(180 deg) leave ~1e-14 deg in the positions, not exact 0."""
+        path = FlightPath.spiral(60.0, 0.0, num_waypoints=4, radius_deg=10.0)
+        into_last = math.degrees(math.atan2(-40 * math.cos(math.radians(45)), 30))
+        expected = [
+            math.degrees(math.atan2(20 * math.cos(math.radians(65)), -10)),
+            math.degrees(math.atan2(-20 * math.cos(math.radians(45)), -30)),
+            into_last,
+            into_last,
+        ]
+        assert [w.heading_deg % 360 for w in path] == pytest.approx(
+            [e % 360 for e in expected], abs=1e-12
+        )
 
     def test_altitudes_cycle_through_the_given_list(self):
         path = FlightPath.spiral(0.0, 0.0, num_waypoints=5, altitudes=[10.0, 20.0])
@@ -96,7 +109,7 @@ class TestSpiral:
 
 class TestLinear:
     """A straight run between two points. Due north and due south have one heading
-    under any bearing definition; the off-axis value is MS-5/MS-7 and stays open."""
+    under any bearing definition; off-axis legs count a degree of longitude by cos(lat)."""
 
     def test_a_leg_due_north_heads_zero_not_east(self):
         """MS-18: a northbound meridian leg heads 0."""
@@ -107,6 +120,18 @@ class TestLinear:
         """MS-18: a southbound meridian leg heads 180."""
         path = FlightPath.linear(33.0, 34.0, 32.0, 34.0, num_waypoints=3)
         assert [w.heading_deg for w in path] == [180.0, 180.0, 180.0]
+
+    def test_a_leg_at_sixty_north_counts_a_degree_of_longitude_as_half_a_degree(self):
+        """MS-7: at mean latitude 60, 2 degrees east and 1 north is a 45 degree ground bearing.
+        Tolerance: cos(60 deg) rounds to 0.5000000000000001, moving the bearing ~7e-15 deg."""
+        path = FlightPath.linear(59.5, 34.0, 60.5, 36.0, num_waypoints=3)
+        assert [w.heading_deg for w in path] == pytest.approx([45.0, 45.0, 45.0], abs=1e-13)
+
+    def test_a_leg_at_sixty_north_heading_south_west_turns_225_clockwise_not_45(self):
+        """MS-7: the reverse of the 45 degree leg heads 225 clockwise from north.
+        Tolerance: the same cos(60 deg) rounding; the range of the angle is not pinned."""
+        path = FlightPath.linear(60.5, 36.0, 59.5, 34.0, num_waypoints=3)
+        assert [w.heading_deg % 360 for w in path] == pytest.approx([225.0] * 3, abs=1e-13)
 
     def test_it_starts_at_the_start_and_ends_at_the_end(self):
         # No tolerance: np.linspace pins both endpoints exactly, verified.

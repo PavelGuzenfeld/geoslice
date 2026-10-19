@@ -79,22 +79,28 @@ class FlightPath:
             altitudes = [50, 100, 150, 200, 250]
 
         waypoints = []
-        headings = np.linspace(0, 360, num_waypoints, endpoint=False)
+        angles_deg = np.linspace(0, 360, num_waypoints, endpoint=False)
 
         for i in range(num_waypoints):
             radius = radius_deg * (i + 1)
-            angle = np.radians(headings[i])
+            angle = np.radians(angles_deg[i])
 
             waypoints.append(
                 DroneState(
                     lat=center_lat + radius * np.cos(angle),
                     lon=center_lon + radius * np.sin(angle),
                     altitude_m=altitudes[i % len(altitudes)],
-                    heading_deg=headings[i],
                     fov_deg=fov_deg,
                     timestamp=float(i),
                 )
             )
+
+        headings = [
+            cls._heading_deg(here.lat, here.lon, there.lat, there.lon)
+            for here, there in zip(waypoints, waypoints[1:])
+        ]
+        for waypoint, heading in zip(waypoints, headings + headings[-1:]):
+            waypoint.heading_deg = heading
 
         return cls(waypoints)
 
@@ -112,7 +118,7 @@ class FlightPath:
         """Generate a linear flight path between two points."""
         lats = np.linspace(start_lat, end_lat, num_waypoints)
         lons = np.linspace(start_lon, end_lon, num_waypoints)
-        heading = math.degrees(math.atan2(end_lon - start_lon, end_lat - start_lat))
+        heading = cls._heading_deg(start_lat, start_lon, end_lat, end_lon)
 
         waypoints = [
             DroneState(
@@ -126,6 +132,12 @@ class FlightPath:
             for i, (lat, lon) in enumerate(zip(lats, lons))
         ]
         return cls(waypoints)
+
+    @staticmethod
+    def _heading_deg(from_lat: float, from_lon: float, to_lat: float, to_lon: float) -> float:
+        """Clockwise from north, with a degree of longitude shortened by cos(mean latitude)."""
+        mean_lat = math.radians((from_lat + to_lat) / 2)
+        return math.degrees(math.atan2((to_lon - from_lon) * math.cos(mean_lat), to_lat - from_lat))
 
     @classmethod
     def grid(
