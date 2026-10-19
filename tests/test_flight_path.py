@@ -10,6 +10,8 @@ written against what the code currently computes there would freeze a
 simplification nobody has confirmed, which is the opposite of useful.
 """
 
+import math
+
 import numpy as np
 import pytest
 
@@ -81,9 +83,20 @@ class TestSpiral:
         # decomposed into components and recombined, nothing accumulates.
         assert offset == pytest.approx(0.25, abs=1e-15)
 
-    def test_headings_divide_the_full_turn_evenly_and_do_not_repeat_zero(self):
-        path = FlightPath.spiral(0.0, 0.0, num_waypoints=4)
-        assert [w.heading_deg for w in path] == [0.0, 90.0, 180.0, 270.0]
+    def test_each_waypoint_heads_along_the_leg_to_the_next_not_away_from_the_centre(self):
+        """MS-17 with the MS-7 bearing over (70, 0), (60, 20), (30, 0), (60, -40); the last repeats.
+        Tolerance: cos(90 deg) and sin(180 deg) leave ~1e-14 deg in the positions, not exact 0."""
+        path = FlightPath.spiral(60.0, 0.0, num_waypoints=4, radius_deg=10.0)
+        into_last = math.degrees(math.atan2(-40 * math.cos(math.radians(45)), 30))
+        expected = [
+            math.degrees(math.atan2(20 * math.cos(math.radians(65)), -10)),
+            math.degrees(math.atan2(-20 * math.cos(math.radians(45)), -30)),
+            into_last,
+            into_last,
+        ]
+        assert [w.heading_deg % 360 for w in path] == pytest.approx(
+            [e % 360 for e in expected], abs=1e-12
+        )
 
     def test_altitudes_cycle_through_the_given_list(self):
         path = FlightPath.spiral(0.0, 0.0, num_waypoints=5, altitudes=[10.0, 20.0])

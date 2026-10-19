@@ -6,19 +6,3 @@
 #
 # These come out as the (needs intent) lines get answered. They are not
 # permanent, and they are not a judgement that the code is correct.
-
-[[waiver]]
-file = "python/geoslice/drone.py"
-line = 90
-column = 24
-old = """center_lat + radius * np.cos(angle)"""
-new = """center_lat - radius * np.cos(angle)"""
-reason = "MS-17: mirroring the offset leaves every heading_deg naming a direction the waypoint no longer lies in, and the radii are unchanged so no shape test can see it. Whether heading_deg means bearing from the centre or direction of travel is unstated, and the answer decides whether this is a defect at all."
-
-[[waiver]]
-file = "python/geoslice/drone.py"
-line = 91
-column = 24
-old = """center_lon + radius * np.sin(angle)"""
-new = """center_lon - radius * np.sin(angle)"""
-reason = "MS-17, same construction as above. The longitude term of the same unsettled heading-to-position relationship."
