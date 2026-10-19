@@ -193,6 +193,9 @@ class TestWindowParams:
 # Integration tests
 class TestIntegration:
     def test_full_pipeline(self, test_data_dir):
+        """Arms grow 0.0001 deg, ~22 px on the 0.5 m grid (MS-8); 5 m and 10 m see 11 and 23 px.
+        From pixel (100, 50), waypoints 0 (north) and 1 (72 deg) fit the 200x100 map; 2 and 3 land
+        54 and 72 px south, past row 100, and 4 lands 106 px west, past column 0: 2 valid."""
         loader = FastGeoMap(test_data_dir, use_cpp=False)
         geo = GeoTransform(loader.meta.transform, utm_zone=36)
 
@@ -216,5 +219,4 @@ class TestIntegration:
                 assert data is not None
                 valid_count += 1
 
-        # At least some windows should be valid
-        assert valid_count >= 0  # Relaxed - just ensure no crashes
+        assert valid_count == 2
