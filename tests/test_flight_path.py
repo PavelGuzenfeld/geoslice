@@ -4,10 +4,10 @@ Adopting the mutation gate measured a 14% kill rate on drone.py: 42 of 49
 mutants survived. These pin the behaviour each function's name, signature and
 docstring already promise.
 
-They deliberately do NOT pin what the model spec (issue #6) flags as
-needing intent — the radius units of MS-8. A test
-written against what the code currently computes there would freeze a
-simplification nobody has confirmed, which is the opposite of useful.
+They deliberately do NOT pin what the model spec (issue #6) tags as
+needing intent. A test written against what the code currently computes
+there would freeze a simplification nobody has confirmed, which is the
+opposite of useful.
 """
 
 import math
@@ -60,31 +60,30 @@ class TestDroneStateDefaults:
 
 
 class TestSpiral:
-    """Anchored on the docstring — "a spiral flight path around a center point".
-    No test here cites MS-8: that line is tagged (needs intent) and was itself
-    reconstructed from this code, so citing it would assert the code against
-    itself. The units of radius_deg stay unasserted for the same reason."""
+    """Anchored on the docstring — "a spiral flight path around a center point" —
+    and on MS-8: radius_deg is degrees of arc on both axes, so waypoint i sits
+    radius_deg * (i + 1) degrees from the centre."""
 
     def test_it_returns_the_requested_number_of_waypoints(self):
         assert len(FlightPath.spiral(0.0, 0.0, num_waypoints=7)) == 7
 
     def test_the_arm_grows_outward_rather_than_collapsing_inward(self):
-        # A path that spirals inward with i is not "a spiral around a centre".
+        """MS-8: the arm grows by radius_deg per waypoint, so it never spirals inward."""
         path = FlightPath.spiral(0.0, 0.0, num_waypoints=6, radius_deg=0.01)
         radii = [np.hypot(w.lat, w.lon) for w in path]
         assert radii == sorted(radii)
         assert radii[0] < radii[-1]
 
     def test_the_first_waypoint_sits_one_radius_step_out_not_on_the_centre(self):
-        # "Around a centre point": a waypoint at radius 0 is on it, not around it.
+        """MS-8: waypoint 0 sits radius_deg degrees from the centre, not on it.
+        Tolerance: one cos/sin round trip on a 0.25 magnitude; nothing accumulates."""
         path = FlightPath.spiral(10.0, 20.0, num_waypoints=3, radius_deg=0.25)
         offset = np.hypot(path[0].lat - 10.0, path[0].lon - 20.0)
-        # Tolerance is one cos/sin round trip on a 0.25 magnitude: the radius is
-        # decomposed into components and recombined, nothing accumulates.
         assert offset == pytest.approx(0.25, abs=1e-15)
 
     def test_each_waypoint_heads_along_the_leg_to_the_next_not_away_from_the_centre(self):
         """MS-17 with the MS-7 bearing over (70, 0), (60, 20), (30, 0), (60, -40); the last repeats.
+        MS-8 puts those waypoints radius_deg * (i + 1) degrees out on both axes.
         Tolerance: cos(90 deg) and sin(180 deg) leave ~1e-14 deg in the positions, not exact 0."""
         path = FlightPath.spiral(60.0, 0.0, num_waypoints=4, radius_deg=10.0)
         into_last = math.degrees(math.atan2(-40 * math.cos(math.radians(45)), 30))
@@ -197,7 +196,7 @@ class TestGrid:
 class TestDefaults:
     """A caller who passes nothing gets these. They are public API, so they are
     pinned here — which is not a claim that any of the values is geodetically
-    right. MS-8 still flags what radius_deg even means."""
+    right."""
 
     def test_spiral_defaults(self):
         path = FlightPath.spiral(0.0, 0.0)
