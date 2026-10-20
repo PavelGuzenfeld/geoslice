@@ -48,7 +48,7 @@ jobs:
         run: pip install -e .
 
       - name: Run tests
-        run: pytest tests/test_geoslice.py -v
+        run: pytest tests -v
 
   lint:
     runs-on: ubuntu-latest
